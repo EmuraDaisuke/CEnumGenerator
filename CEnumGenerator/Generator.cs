@@ -1,10 +1,14 @@
 
 
 
+//#define LOG
+//#define DUMP
+
+
+
 using System.Text;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 
 
 
@@ -41,14 +45,18 @@ namespace SourceGenerator
 		
 		public static void Log(this SourceProductionContext This, string Text)
 		{
+			#if LOG//[
 			This.ReportDiagnostic(CreateDiagnostic("SourceProductionContext", Text));
+			#endif//]
 		}
 		
 		
 		
 		public static void Log(this GeneratorExecutionContext This, string Text)
 		{
+			#if LOG//[
 			This.ReportDiagnostic(CreateDiagnostic("GeneratorExecutionContext", Text));
+			#endif//]
 		}
 		
 		
@@ -181,6 +189,7 @@ namespace SourceGenerator
 				}
 				c.Log($"{MetadataName}.{INamedTypeSymbol != null}");
 				
+				#if DUMP//[
 				if (INamedTypeSymbol != null){
 					foreach (var AttributeData in INamedTypeSymbol.GetAttributes()){
 						DumpAttributeData(c, AttributeData);
@@ -199,6 +208,7 @@ namespace SourceGenerator
 						}
 					}
 				}
+				#endif//]
 				
 				GeneratEnum(c, ref o, MetadataName, INamedTypeSymbol);
 			}
