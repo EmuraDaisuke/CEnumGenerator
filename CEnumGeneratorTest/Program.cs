@@ -46,38 +46,9 @@ namespace SourceGeneratorTest
 			
 			
 			
-			public class Test
-			{
-				public byte v;
-				
-				public void From(EPuyo e)
-				{
-					v = (byte)e;
-				}
-				
-				public EPuyo To()
-				{
-					return (EPuyo)v;
-				}
-			}
-			
-			
-			
 			static void Main(string[] args)
 			{
 				Log("[ Main");
-				
-				{	// 
-					var t = new Test();
-					
-					t.From(EPuyo.Hoge);
-					var e = t.To();
-					
-					#if false//[
-					t.From(EHoge.Hoge);
-					var e = t.To();
-					#endif//]
-				}
 				
 				{	// 
 					var c = (CEHoge)EHoge.Piyo;
