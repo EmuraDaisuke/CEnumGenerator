@@ -7,119 +7,84 @@ using CEnum;
 
 
 
-[CEnum]
-enum EHoge : byte {Hoge,Fuga,Piyo,_Length,}
+[CEnum] enum ETest {a,b,};
+[CEnum, Flags] enum EFlag {[EnumMember(Value="A")]a=(1<<0),[EnumMember(Value="B")]b=(1<<1),}
 
 
 
 namespace SourceGeneratorTest
 {
-	[CEnum]
-	enum EFuga : short {Hoge=(short)EHoge._Length,Fuga,Piyo,}
-	
-	
-	
 	namespace Hoge
 	{
-		[CEnum] [Flags]
-		enum EPiyo : long {Hoge=(1<<0),Fuga=(1<<1),Piyo=(1<<2),All=(Hoge|Fuga|Piyo),}
-		
-		
-		
 		partial class Program
 		{
-			[CEnum]
-			public enum EPuyo : short {Hoge=0,Fuga=0,Piyo=0,}
-			
-			
-			
-			public partial class Child
-			{
-				[CEnum]
-				public enum EPoyo : byte
-				{
-					[EnumMember(Value = "MemberHoge")] Hoge=1,
-					[EnumMember(Value = "MemberFuga")] Fuga,
-					[EnumMember(Value = "MemberPiyo")] Piyo,
-				}
-			}
-			
-			
-			
 			static void Main(string[] args)
 			{
 				Log("[ Main");
 				
 				{	// 
-					var c = (CEHoge)EHoge.Piyo;
-					Log($"{c.Name}");
-					var e = (EHoge)c;
-					Log($"{Enum.GetName<EHoge>(e)}");
-					Log($"---");
-				}
-				
-				{	// 
-					var e = CEHoge.CPiyo;
-					Log($"{e.Name}.{e.Value}.{e.ToString()}");
-				}
-				
-				{	// 
-					var e = CEHoge.Parse("CFuga");
-					Log($"{e.Name}.{e.Value}.{e.ToString()}");
-				}
-				
-				{	// 
-					var e = CEHoge.Parse(3);
-					Log($"{e.Name}.{e.Value}.{e.ToString()}");
-				}
-				
-				{	// 
-					if (CEHoge.TryParse("CPiyo", out var e)){
-						Log($"{e.Name}.{e.Value}.{e.ToString()}");
-					} else {
-						Log($"Error");
+					var c0 = (CETest)ETest.a;
+					CETest c1 = ETest.b;
+					Log($"{c0.Name}.{c0.Value}");
+					Log($"{c1.Name}.{c1.Value}");
+					
+					var e0 = (ETest)c0;
+					ETest e1 = c1;
+					Log($"{Enum.GetName(e0)}.{(int)e0}");
+					Log($"{Enum.GetName(e1)}.{(int)e1}");
+					
+					var c2 = CETest.Ca;
+					var c3 = CETest.Cb;
+					Log($"{c2.Name}.{c2.Value}");
+					Log($"{c3.Name}.{c3.Value}");
+					
+					switch (c2){
+						case (int)ETest.a: break;
+						case (int)ETest.b: break;
 					}
-				}
-				
-				{	// 
-					if (CEHoge.TryParse(1, out var e)){
-						Log($"{e.Name}.{e.Value}.{e.ToString()}");
-					} else {
-						Log($"Error");
+					
+					switch (c2.Value){
+						case (int)ETest.a: break;
+						case (int)ETest.b: break;
 					}
-				}
-				
-				{	// 
-					var f3 = EPiyo.Hoge | EPiyo.Piyo;
-					Log($"{Enum.GetName<EPiyo>(f3)}.{(int)f3}.{f3.ToString()}");
-					Log($"{f3.HasFlag(EPiyo.Hoge)}");
-					Log($"{f3.HasFlag(EPiyo.Fuga)}");
-					Log($"{f3.HasFlag(EPiyo.Piyo)}");
-					Log($"{f3.HasFlag(EPiyo.Hoge | EPiyo.Piyo)}");
-				}
-				
-				{	// 
-					var e3 = CEPiyo.CHoge | CEPiyo.CPiyo;
-					Log($"{e3.Name}.{e3.Value}.{e3.ToString()}");
-					Log($"{e3.HasFlag(CEPiyo.CHoge)}");
-					Log($"{e3.HasFlag(CEPiyo.CFuga)}");
-					Log($"{e3.HasFlag(CEPiyo.CPiyo)}");
-					Log($"{e3.HasFlag(CEPiyo.CHoge | CEPiyo.CPiyo)}");
-				}
-				
-				{	// 
-					var e = (CEFuga)5;
-					Log($"{e.Name}.{e.Value}");
-				}
-				
-				{	// 
-					var e = (CEFuga)EFuga.Fuga;
-					Log($"{e.Name}.{e.Value}");
-				}
-				
-				{	// 
-					var e = (CEFuga)"CHoge";
-					Log($"{e.Name}.{e.Value}");
+					
+					var a0 = new string[CETest.Length];
+					a0[(int)ETest.a] = "a";
+					a0[(int)ETest.b] = "b";
+					var s0 = a0[c2];
+					
+					var a1 = new string[CETest.Length];
+					a1[(int)ETest.a] = "a";
+					a1[(int)ETest.b] = "b";
+					var s1 = a1[c2.Value];
+					
+					var c4 = CEFlag.Ca;
+					var c5 = c4 | CEFlag.Cb;
+					Log($"{c5.Name}.{c5.Value}.{c5.ToString()}");
+					
+					var m4 = c4.GetEnumMemberValue();
+					Log($"{m4}");
+					
+					try {
+						var c6 = (CETest)999;
+						Log($"c6 : Done");
+					}
+					catch (Exception){
+						Log($"c6 : Exception");
+					}
+					
+					try {
+						var c7 = (CEFlag)(1<<30);
+						Log($"c7 : Done");
+					}
+					catch (Exception){
+						Log($"c7 : Exception");
+					}
+					
+					var e6 = (ETest)999;
+					var e7 = (EFlag)(1<<30);
+					Log($"{Enum.GetName(e6)}.{(int)e6}");
+					Log($"{Enum.GetName(e7)}.{(int)e7}");
 				}
 				
 				Log("] Main");
