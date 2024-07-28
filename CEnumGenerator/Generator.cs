@@ -159,14 +159,13 @@ namespace SourceGenerator
 				o.Add($"public class CEnum<T> where T : INumber<T> {{");
 				o.Add($"	public readonly T Value;");
 				o.Add($"	public readonly string Name;");
-				o.Add($"	public readonly string EnumMemberValue;");
+				o.Add($"	public readonly string? EnumMemberValue;");
 				o.Add($"	protected string? StringCache = null;");
-				o.Add($"	protected static readonly string EnumMemberDefault = string.Empty;");
-				o.Add($"	protected CEnum(T v, string n, string e){{ Value = v; Name = n; EnumMemberValue = e; }}");
+				o.Add($"	protected CEnum(T v, string n, string? e = null){{ Value = v; Name = n; EnumMemberValue = e; }}");
 				o.Add($"	protected virtual string? ValueToString() => Value.ToString();");
 				o.Add($"	{MethodImpl}public static implicit operator T(CEnum<T> This) => This.Value;");
 				o.Add($"	{MethodImpl}public new string? ToString(){{ return (StringCache != null)? StringCache: (StringCache = ValueToString()); }}");
-				o.Add($"	{MethodImpl}public string GetEnumMemberValue() => EnumMemberValue;");
+				o.Add($"	{MethodImpl}public string? GetEnumMemberValue() => EnumMemberValue;");
 				o.Add($"}}");
 			}
 			
@@ -324,7 +323,7 @@ namespace SourceGenerator
 										int? Value = null;
 										int Length = 0;
 										foreach (var Member in PathINamedTypeSymbol.GetMembers().OfType<IFieldSymbol>()){
-											var EnumMemberValue = "EnumMemberDefault";
+											var EnumMemberValue = "null";
 											
 											foreach (var AttributeData in Member.GetAttributes()){
 												if (AttributeData.AttributeClass == null) continue;
@@ -352,7 +351,7 @@ namespace SourceGenerator
 										o.Add($"{I}public const int Length = {Length};");
 										
 										// Constructor
-										o.Add($"{I}protected {CName}({EType} v, string n, string e):base(v, n, e){{}}");
+										o.Add($"{I}protected {CName}({EType} v, string n, string? e):base(v, n, e){{}}");
 										
 										// aMember
 										o.Add($"{I}protected static readonly {CName}[] aMember = new {CName}[]{{");
@@ -387,7 +386,7 @@ namespace SourceGenerator
 										o.Add($"{I}static readonly ReadOnlyCollection<string> Names = aName.AsReadOnly();");
 										
 										// ValueToMember
-										if (!IsContinuous) o.Add($"{I}static readonly Dictionary<{EType}, {CName}> ValueToMember = new({Length});");
+										if (IsFlags || !IsContinuous) o.Add($"{I}static readonly Dictionary<{EType}, {CName}> ValueToMember = new({Length});");
 										
 										// NameToMember
 										o.Add($"{I}static readonly Dictionary<int, {CName}> NameToMember = new({Length});");
@@ -402,7 +401,7 @@ namespace SourceGenerator
 										o.Add($"{I}static {CName}(){{");
 										I = IndentInc(s);
 										{	// 
-											if (!IsContinuous){
+											if (IsFlags || !IsContinuous){
 												o.Add($"{I}foreach (var m in aMember){{");
 												I = IndentInc(s);
 												{	// 
@@ -423,7 +422,7 @@ namespace SourceGenerator
 										
 										// ToCEnum
 										if (IsFlags){
-											o.Add($"{I}{MethodImpl}static {CName} ToCEnum({EType} Value) => (ValueToMember.TryGetValue(Value, out var m))? m: new {CName}(Value, string.Empty, EnumMemberDefault);");
+											o.Add($"{I}{MethodImpl}static {CName} ToCEnum({EType} Value) => (ValueToMember.TryGetValue(Value, out var m))? m: new {CName}(Value, string.Empty, null);");
 										} else {
 											if (IsContinuous){
 												if (Min == null || Min == 0){
@@ -571,13 +570,13 @@ namespace SourceGenerator
 										
 										// Flag
 										if (IsFlags){
-											o.Add($"{I}{MethodImpl}public bool HasFlag(CEnum<{EType}> Flags) => ((Value & Flags.Value) == Flags.Value);");
-											o.Add($"{I}{MethodImpl}public bool AllFlag(CEnum<{EType}> Flags) => ((Value & Flags.Value) == Flags.Value);");
-											o.Add($"{I}{MethodImpl}public bool AnyFlag(CEnum<{EType}> Flags) => ((Value & Flags.Value) != default({EType}));");
-											o.Add($"{I}{MethodImpl}public bool NotFlag(CEnum<{EType}> Flags) => ((Value & Flags.Value) == default({EType}));");
-											o.Add($"{I}{MethodImpl}public bool OtherAllFlag(CEnum<{EType}> Flags) => ((Value & ~Flags.Value) == ~Flags.Value);");
-											o.Add($"{I}{MethodImpl}public bool OtherAnyFlag(CEnum<{EType}> Flags) => ((Value & ~Flags.Value) != default({EType}));");
-											o.Add($"{I}{MethodImpl}public bool OtherNotFlag(CEnum<{EType}> Flags) => ((Value & ~Flags.Value) == default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool HasFlag({CName} Flags) => ((Value & Flags.Value) == Flags.Value);");
+											o.Add($"{I}{MethodImpl}public bool AllFlag({CName} Flags) => ((Value & Flags.Value) == Flags.Value);");
+											o.Add($"{I}{MethodImpl}public bool AnyFlag({CName} Flags) => ((Value & Flags.Value) != default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool NotFlag({CName} Flags) => ((Value & Flags.Value) == default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool OtherAllFlag({CName} Flags) => ((Value & ~Flags.Value) == ~Flags.Value);");
+											o.Add($"{I}{MethodImpl}public bool OtherAnyFlag({CName} Flags) => ((Value & ~Flags.Value) != default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool OtherNotFlag({CName} Flags) => ((Value & ~Flags.Value) == default({EType}));");
 										}
 										
 										// ValueToString
