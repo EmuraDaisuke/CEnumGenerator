@@ -539,6 +539,7 @@ namespace SourceGenerator
 										// IsDefined
 										o.Add($"{I}{MethodImpl}public static bool IsDefined({EType} Value) => TryParse(Value, out var _);");
 										o.Add($"{I}{MethodImpl}public static bool IsDefined(string Names) => TryParse(Names, out var _);");
+										o.Add($"{I}{MethodImpl}public static bool IsDefined(string Names, bool ignoreCase) => TryParse(Names, ignoreCase, out var _);");
 										
 										// GetMembers
 										o.Add($"{I}public static ReadOnlyCollection<{CName}> GetMembers => Members;");
@@ -565,7 +566,7 @@ namespace SourceGenerator
 											o.Add($"{I}{MethodImpl}public static {CName} operator &({CName} a, {CName} b) => ToCEnum(({EType})(a.Value & b.Value));");
 											o.Add($"{I}{MethodImpl}public static {CName} operator |({CName} a, {CName} b) => ToCEnum(({EType})(a.Value | b.Value));");
 											o.Add($"{I}{MethodImpl}public static {CName} operator ^({CName} a, {CName} b) => ToCEnum(({EType})(a.Value ^ b.Value));");
-											o.Add($"{I}{MethodImpl}public static {CName} operator ~({CName} c) => ToCEnum(({EType})~c.Value);");
+											o.Add($"{I}{MethodImpl}public static {CName} operator ~({CName} c) => ToCEnum(({EType})(~c.Value & FlagsMask));");
 										}
 										
 										// Flag
