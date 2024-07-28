@@ -575,9 +575,9 @@ namespace SourceGenerator
 											o.Add($"{I}{MethodImpl}public bool AllFlag({CName} Flags) => ((Value & Flags.Value) == Flags.Value);");
 											o.Add($"{I}{MethodImpl}public bool AnyFlag({CName} Flags) => ((Value & Flags.Value) != default({EType}));");
 											o.Add($"{I}{MethodImpl}public bool NotFlag({CName} Flags) => ((Value & Flags.Value) == default({EType}));");
-											o.Add($"{I}{MethodImpl}public bool OtherAllFlag({CName} Flags) => ((Value & ~Flags.Value) == ~Flags.Value);");
-											o.Add($"{I}{MethodImpl}public bool OtherAnyFlag({CName} Flags) => ((Value & ~Flags.Value) != default({EType}));");
-											o.Add($"{I}{MethodImpl}public bool OtherNotFlag({CName} Flags) => ((Value & ~Flags.Value) == default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool OtherAllFlag({CName} Flags) => ((Value & (~Flags.Value & FlagsMask)) == (~Flags.Value & FlagsMask));");
+											o.Add($"{I}{MethodImpl}public bool OtherAnyFlag({CName} Flags) => ((Value & (~Flags.Value & FlagsMask)) != default({EType}));");
+											o.Add($"{I}{MethodImpl}public bool OtherNotFlag({CName} Flags) => ((Value & (~Flags.Value & FlagsMask)) == default({EType}));");
 										}
 										
 										// ValueToString
