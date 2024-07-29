@@ -8,7 +8,7 @@ using CEnum;
 
 
 [CEnum] enum ETest {a,b,};
-[CEnum, Flags] enum EFlag {[EnumMember(Value="A")]a=(1<<0),[EnumMember(Value="B")]b=(1<<1),}
+[CEnum, Flags] enum EFlag : long {[EnumMember(Value="A")]a=(1L<<0),[EnumMember(Value="B")]b=(1L<<60),}
 
 
 
@@ -60,7 +60,7 @@ namespace SourceGeneratorTest
 					
 					var c4 = CEFlag.Ca;
 					var c5 = c4 | CEFlag.Cb;
-					Log($"{c5.Name}.{c5.Value}.{c5.ToString()}");
+					Log($"{c5.Name}.0x{c5.Value:x}.{c5.ToString()}");
 					
 					var m4 = c4.GetEnumMemberValue();
 					Log($"{m4}");
@@ -84,7 +84,7 @@ namespace SourceGeneratorTest
 					var e6 = (ETest)999;
 					var e7 = (EFlag)(1<<30);
 					Log($"{Enum.GetName(e6)}.{(int)e6}");
-					Log($"{Enum.GetName(e7)}.{(int)e7}");
+					Log($"{Enum.GetName(e7)}.0x{(int)e7:x}");
 				}
 				
 				Log("] Main");
