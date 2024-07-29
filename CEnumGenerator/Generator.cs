@@ -1,8 +1,8 @@
 
 
 
-//#define LOG
-//#define DUMP
+#define LOG
+#define DUMP
 
 
 
@@ -163,7 +163,7 @@ namespace SourceGenerator
 				o.Add($"	protected string? StringCache = null;");
 				o.Add($"	protected CEnum(T v, string n, string? e = null){{ Value = v; Name = n; EnumMemberValue = e; }}");
 				o.Add($"	protected virtual string? ValueToString() => Value.ToString();");
-				o.Add($"	{MethodImpl}public static implicit operator T(CEnum<T> This) => This.Value;");
+				o.Add($"	{MethodImpl}public static implicit operator T(CEnum<T> c) => c.Value;");
 				o.Add($"	{MethodImpl}public new string? ToString(){{ return (StringCache != null)? StringCache: (StringCache = ValueToString()); }}");
 				o.Add($"	{MethodImpl}public string? GetEnumMemberValue() => EnumMemberValue;");
 				o.Add($"}}");
@@ -305,6 +305,8 @@ namespace SourceGenerator
 									var IsLong = (EType?.ToString() == "long");
 									var IsFlags = false;
 									
+									string Number(bool IsFlags, object? v) => (IsFlags)? $"0x{v ?? 0L:x}": $"{v ?? 0L}";
+									
 									foreach (var AttributeData in PathINamedTypeSymbol.GetAttributes()){
 										if (AttributeData.AttributeClass == null) continue;
 										if (AttributeData.AttributeClass.Name == "FlagsAttribute"){
@@ -319,8 +321,10 @@ namespace SourceGenerator
 										var IsContinuous = true;
 										
 										// Member
-										int? Min = null;
-										int? Value = null;
+										long? Value = null;
+										long? Min = null;
+										long? Max = null;
+										long FlagsMask = 0;
 										int Length = 0;
 										foreach (var Member in PathINamedTypeSymbol.GetMembers().OfType<IFieldSymbol>()){
 											var EnumMemberValue = "null";
@@ -338,17 +342,32 @@ namespace SourceGenerator
 											}
 											
 											var Name = Member.Name;
-											var ConstantValue = (Member.ConstantValue != null)? Convert.ToInt32(Member.ConstantValue): 0;
-											o.Add($@"{I}public static readonly {CName} C{Name} = new({Member.ConstantValue}, ""C{Name}"", {EnumMemberValue});");
-											Min ??= ConstantValue;
-											Value ??= ConstantValue;
+											var ConstantValue = (Member.ConstantValue != null)? Convert.ToInt64(Member.ConstantValue): 0L;
+											o.Add($@"{I}public static readonly {CName} C{Name} = new({Number(IsFlags, Member.ConstantValue)}, ""C{Name}"", {EnumMemberValue});");
+											
+											Value ??= (long)ConstantValue;
+											Min ??= (long)ConstantValue;
+											Max = Value;
+											FlagsMask |= (long)ConstantValue;
 											IsContinuous = (IsContinuous)? (ConstantValue == Value): IsContinuous;
+											
 											++Value;
 											++Length;
 										}
 										
 										// Length
 										o.Add($"{I}public const int Length = {Length};");
+										
+										// Min,Max
+										if (!IsFlags && IsContinuous && Length > 0){
+											o.Add($"{I}public const {EType} Min = {Min ?? 0L};");
+											o.Add($"{I}public const {EType} Max = {Max ?? 0L};");
+										}
+										
+										// FlagsMask
+										if (IsFlags){
+											o.Add($"{I}public const {EType} FlagsMask = {Number(IsFlags, FlagsMask)};");
+										}
 										
 										// Constructor
 										o.Add($"{I}protected {CName}({EType} v, string n, string? e):base(v, n, e){{}}");
@@ -366,7 +385,7 @@ namespace SourceGenerator
 										o.Add($"{I}protected static readonly {EType}[] aValue = new {EType}[]{{");
 										I = IndentInc(s);
 										foreach (var Member in PathINamedTypeSymbol.GetMembers().OfType<IFieldSymbol>()){
-											o.Add($"{I}{Member.ConstantValue},");
+											o.Add($"{I}{Number(IsFlags, Member.ConstantValue)},");
 										}
 										I = IndentDec(s);
 										o.Add($"{I}}};");
@@ -392,11 +411,6 @@ namespace SourceGenerator
 										o.Add($"{I}static readonly Dictionary<int, {CName}> NameToMember = new({Length});");
 										o.Add($"{I}static readonly Dictionary<int, {CName}> nametomember = new({Length});");
 										
-										// FlagsMask
-										if (IsFlags){
-											o.Add($"{I}static readonly {EType} FlagsMask;");
-										}
-										
 										// Initialize
 										o.Add($"{I}static {CName}(){{");
 										I = IndentInc(s);
@@ -413,9 +427,6 @@ namespace SourceGenerator
 											}
 											o.Add($"{I}foreach (var m in aMember) NameToMember.Add(m.Name.GetHashCode(), m);");
 											o.Add($"{I}foreach (var m in aMember) nametomember.Add(m.Name.ToLower().GetHashCode(), m);");
-											if (IsFlags){
-												o.Add($"{I}foreach (var m in aMember) FlagsMask |= m.Value;");
-											}
 										}
 										I = IndentDec(s);
 										o.Add($"{I}}}");
@@ -476,64 +487,65 @@ namespace SourceGenerator
 										o.Add($"{I}}}");
 										
 										// TryParse
-										if (IsFlags){
-											o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{");
-											I = IndentInc(s);
-											{	// 
-												o.Add($"{I}if ((~FlagsMask & Value) != 0){{ Result = null; return false; }}");
-												o.Add($"{I}Result = ToCEnum(Value); return true;");
-											}
-											I = IndentDec(s);
-											o.Add($"{I}}}");
-										} else {
-											if (IsContinuous){
+										if (Length > 0){
+											if (IsFlags){
 												o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{");
 												I = IndentInc(s);
 												{	// 
-													if (Min == null || Min == 0){
-														o.Add($"{I}if (Value < 0 || Value >= {Length}){{ Result = null; return false; }}");
-														o.Add($"{I}Result = ToCEnum(Value); return true;");
-													} else {
-														o.Add($"{I}if (Value < {Min} || Value >= {Length + Min}){{ Result = null; return false; }}");
-														o.Add($"{I}Result = ToCEnum(Value); return true;");
-													}
+													o.Add($"{I}if ((~FlagsMask & Value) != default({EType})){{ Result = null; return false; }}");
+													o.Add($"{I}Result = ToCEnum(Value); return true;");
 												}
 												I = IndentDec(s);
 												o.Add($"{I}}}");
 											} else {
-												o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result) => ValueToMember.TryGetValue(Value, out Result);");
+												if (IsContinuous){
+													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{");
+													I = IndentInc(s);
+													{	// 
+														o.Add($"{I}if (Value < Min || Value > Max){{ Result = null; return false; }}");
+														o.Add($"{I}Result = ToCEnum(Value); return true;");
+													}
+													I = IndentDec(s);
+													o.Add($"{I}}}");
+												} else {
+													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result) => ValueToMember.TryGetValue(Value, out Result);");
+												}
 											}
-										}
-										if (IsFlags){
-											o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result){{");
-											I = IndentInc(s);
-											{	// 
-												o.Add($"{I}{EType} Value = default;");
-												o.Add($"{I}var aToken = Names.Split(',', (StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));");
-												o.Add($"{I}foreach (var Token in aToken) if (NameToMember.TryGetValue(Token.GetHashCode(), out var m)) Value |= m.Value; else {{ Result = null; return false; }}");
-												o.Add($"{I}Result = ToCEnum(Value); return true;");
+											if (IsFlags){
+												o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result){{");
+												I = IndentInc(s);
+												{	// 
+													o.Add($"{I}{EType} Value = default;");
+													o.Add($"{I}var aToken = Names.Split(',', (StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));");
+													o.Add($"{I}foreach (var Token in aToken) if (NameToMember.TryGetValue(Token.GetHashCode(), out var m)) Value |= m.Value; else {{ Result = null; return false; }}");
+													o.Add($"{I}Result = ToCEnum(Value); return true;");
+												}
+												I = IndentDec(s);
+												o.Add($"{I}}}");
+												o.Add($"{I}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{");
+												I = IndentInc(s);
+												{	// 
+													o.Add($"{I}{EType} Value = default;");
+													o.Add($"{I}var aToken = Names.Split(',', (StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));");
+													o.Add($"{I}foreach (var Token in aToken) if (nametomember.TryGetValue(Token.ToLower().GetHashCode(), out var m)) Value |= m.Value; else {{ Result = null; return false; }}");
+													o.Add($"{I}Result = ToCEnum(Value); return true;");
+												}
+												I = IndentDec(s);
+												o.Add($"{I}}}");
+											} else {
+												o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result) => NameToMember.TryGetValue(Names.GetHashCode(), out Result);");
+												o.Add($"{I}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{");
+												I = IndentInc(s);
+												{	// 
+													o.Add($"{I}return (ignoreCase)? nametomember.TryGetValue(Names.ToLower().GetHashCode(), out Result): NameToMember.TryGetValue(Names.GetHashCode(), out Result);");
+												}
+												I = IndentDec(s);
+												o.Add($"{I}}}");
 											}
-											I = IndentDec(s);
-											o.Add($"{I}}}");
-											o.Add($"{I}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{");
-											I = IndentInc(s);
-											{	// 
-												o.Add($"{I}{EType} Value = default;");
-												o.Add($"{I}var aToken = Names.Split(',', (StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));");
-												o.Add($"{I}foreach (var Token in aToken) if (nametomember.TryGetValue(Token.ToLower().GetHashCode(), out var m)) Value |= m.Value; else {{ Result = null; return false; }}");
-												o.Add($"{I}Result = ToCEnum(Value); return true;");
-											}
-											I = IndentDec(s);
-											o.Add($"{I}}}");
 										} else {
-											o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result) => NameToMember.TryGetValue(Names.GetHashCode(), out Result);");
-											o.Add($"{I}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{");
-											I = IndentInc(s);
-											{	// 
-												o.Add($"{I}return (ignoreCase)? nametomember.TryGetValue(Names.ToLower().GetHashCode(), out Result): NameToMember.TryGetValue(Names.GetHashCode(), out Result);");
-											}
-											I = IndentDec(s);
-											o.Add($"{I}}}");
+											o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{ Result = null; return false; }}");
+											o.Add($"{I}{MethodImpl}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result){{ Result = null; return false; }}");
+											o.Add($"{I}{MethodImpl}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{ Result = null; return false; }}");
 										}
 										
 										// IsDefined
@@ -591,9 +603,9 @@ namespace SourceGenerator
 												I = IndentInc(s);
 												{	// 
 													if (IsLong){
-														o.Add($"{I}if (BitOperations.PopCount((ulong)m.Value) == 1 && (m.Value & Value) != 0){{");
+														o.Add($"{I}if (BitOperations.PopCount((ulong)m.Value) == 1 && (m.Value & Value) != default({EType})){{");
 													} else {
-														o.Add($"{I}if (BitOperations.PopCount((uint)m.Value) == 1 && (m.Value & Value) != 0){{");
+														o.Add($"{I}if (BitOperations.PopCount((uint)m.Value) == 1 && (m.Value & Value) != default({EType})){{");
 													}
 													I = IndentInc(s);
 													{	// 
