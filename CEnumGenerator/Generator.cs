@@ -497,21 +497,6 @@ namespace SourceGenerator
 												}
 												I = IndentDec(s);
 												o.Add($"{I}}}");
-											} else {
-												if (IsContinuous){
-													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{");
-													I = IndentInc(s);
-													{	// 
-														o.Add($"{I}if (Value < Min || Value > Max){{ Result = null; return false; }}");
-														o.Add($"{I}Result = ToCEnum(Value); return true;");
-													}
-													I = IndentDec(s);
-													o.Add($"{I}}}");
-												} else {
-													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result) => ValueToMember.TryGetValue(Value, out Result);");
-												}
-											}
-											if (IsFlags){
 												o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result){{");
 												I = IndentInc(s);
 												{	// 
@@ -533,6 +518,18 @@ namespace SourceGenerator
 												I = IndentDec(s);
 												o.Add($"{I}}}");
 											} else {
+												if (IsContinuous){
+													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result){{");
+													I = IndentInc(s);
+													{	// 
+														o.Add($"{I}if (Value < Min || Value > Max){{ Result = null; return false; }}");
+														o.Add($"{I}Result = ToCEnum(Value); return true;");
+													}
+													I = IndentDec(s);
+													o.Add($"{I}}}");
+												} else {
+													o.Add($"{I}{MethodImpl}public static bool TryParse({EType} Value, [NotNullWhen(true)] out {CName}? Result) => ValueToMember.TryGetValue(Value, out Result);");
+												}
 												o.Add($"{I}public static bool TryParse(string Names, [NotNullWhen(true)] out {CName}? Result) => NameToMember.TryGetValue(Names.GetHashCode(), out Result);");
 												o.Add($"{I}public static bool TryParse(string Names, bool ignoreCase, [NotNullWhen(true)] out {CName}? Result){{");
 												I = IndentInc(s);
